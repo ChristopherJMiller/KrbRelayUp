@@ -17,23 +17,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x" # Adjust version as needed
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
 
-      - name: Restore dependencies
-        run: dotnet restore KrbRelayUp/KrbRelayUp.csproj
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
 
-      - name: Build
-        run: dotnet build KrbRelayUp/KrbRelayUp.csproj --configuration Release --no-restore
+      - name: Restore NuGet packages
+        run: nuget restore KrbRelayUp.sln
 
-      - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+      - name: Build Release
+        run: msbuild KrbRelayUp/KrbRelayUp.csproj /p:Configuration=Release /p:Platform="AnyCPU"
 
-      - name: Publish Windows x64
+      - name: Copy output to publish directory
         run: |
-          dotnet publish KrbRelayUp/KrbRelayUp.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish/win-x64
+          New-Item -ItemType Directory -Force -Path "./publish/win-x64"
+          Copy-Item -Path "KrbRelayUp/bin/Release/*" -Destination "./publish/win-x64/" -Recurse
 
       - name: Get commit info
         id: commit_info
