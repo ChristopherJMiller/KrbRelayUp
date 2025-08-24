@@ -2,75 +2,75 @@ name: Build and Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
   build-and-release:
     runs-on: windows-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x' # Adjust version as needed
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x" # Adjust version as needed
 
-    - name: Restore dependencies
-      run: dotnet restore
+      - name: Restore dependencies
+        run: dotnet restore KrbRelayUp/KrbRelayUp.csproj
 
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
+      - name: Build
+        run: dotnet build KrbRelayUp/KrbRelayUp.csproj --configuration Release --no-restore
 
-    - name: Test
-      run: dotnet test --configuration Release --no-build --verbosity normal
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
 
-    - name: Publish Windows x64
-      run: |
-        dotnet publish --configuration Release --runtime win-x64 --self-contained true --output ./publish/win-x64
+      - name: Publish Windows x64
+        run: |
+          dotnet publish KrbRelayUp/KrbRelayUp.csproj --configuration Release --runtime win-x64 --self-contained true --output ./publish/win-x64
 
-    - name: Get commit info
-      id: commit_info
-      run: |
-        $shortSha = "${{ github.sha }}".Substring(0, 7)
-        $commitMsg = git log -1 --pretty=%B
-        echo "short_sha=$shortSha" >> $env:GITHUB_OUTPUT
-        echo "commit_message=$commitMsg" >> $env:GITHUB_OUTPUT
+      - name: Get commit info
+        id: commit_info
+        run: |
+          $shortSha = "${{ github.sha }}".Substring(0, 7)
+          $commitMsg = git log -1 --pretty=%B
+          echo "short_sha=$shortSha" >> $env:GITHUB_OUTPUT
+          echo "commit_message=$commitMsg" >> $env:GITHUB_OUTPUT
 
-    - name: Create ZIP archive
-      run: |
-        # Create archive for Windows
-        Compress-Archive -Path "./publish/win-x64/*" -DestinationPath "./release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip"
+      - name: Create ZIP archive
+        run: |
+          # Create archive for Windows
+          Compress-Archive -Path "./publish/win-x64/*" -DestinationPath "./release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip"
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: "release-${{ steps.commit_info.outputs.short_sha }}"
-        release_name: "Release ${{ steps.commit_info.outputs.short_sha }}"
-        body: |
-          **Commit:** ${{ github.sha }}
-          **Message:** ${{ steps.commit_info.outputs.commit_message }}
-          
-          ## Downloads
-          - Windows x64: `release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip`
-        draft: false
-        prerelease: false
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "release-${{ steps.commit_info.outputs.short_sha }}"
+          release_name: "Release ${{ steps.commit_info.outputs.short_sha }}"
+          body: |
+            **Commit:** ${{ github.sha }}
+            **Message:** ${{ steps.commit_info.outputs.commit_message }}
 
-    - name: Upload Windows Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: "./release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip"
-        asset_name: "release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip"
-        asset_content_type: application/zip
+            ## Downloads
+            - Windows x64: `release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip`
+          draft: false
+          prerelease: false
+
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: "./release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip"
+          asset_name: "release-win-x64-${{ steps.commit_info.outputs.short_sha }}.zip"
+          asset_content_type: application/zip
